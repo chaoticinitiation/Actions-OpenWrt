@@ -89,6 +89,19 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
+    - name: Fix Rust vendor issue (Cargo.toml.orig)
+      run: |
+        cd openwrt
+        echo "Attempting to fix Rust Cargo.toml.orig missing issue..."
+        make package/feeds/packages/rust/host/prepare V=s || true
+        find build_dir/ -path "*/host/rustc-*/vendor/serde-*/Cargo.toml" | while read -r file; do
+          orig_file="${file}.orig"
+          if [ ! -f "$orig_file" ]; then
+            cp "$file" "$orig_file"
+            echo "Restored: $orig_file"
+          fi
+        done
+
     - name: Compile the firmware
       id: compile
       run: |
@@ -113,7 +126,7 @@ jobs:
 
     - name: Organize files
       id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && !success()
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true'
       run: |
         cd openwrt/bin/targets/*/*
         rm -rf packages
@@ -129,18 +142,16 @@ jobs:
 
     - name: 生成固件Release标签
       id: tag
-      if: env.UPLOAD_RELEASE == 'true' && success()
+      if: env.UPLOAD_RELEASE == 'true' && steps.compile.outputs.status == 'success'
       run: |
-       echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
-       echo "- 使用源码：${{ env.REPO_URL }}" >> release.txt
-       echo "- 使用分支：${{ env.REPO_BRANCH }}" >> release.txt
-        touch release.txt
-       [ ${UPLOAD_GOFILE} = true && ${{ steps.gofile.outputs.url }} ] && echo "🔗 [GoFile](${{ steps.gofile.outputs.url }})" >> release.txt
-       echo "status=success" >> $GITHUB_OUTPUT
+        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+        echo "- 使用源码：${{ env.REPO_URL }}" >> release.txt
+        echo "- 使用分支：${{ env.REPO_BRANCH }}" >> release.txt
+        echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware to release
       uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631
-      if: steps.tag.outputs.status == 'success' && success()
+      if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
