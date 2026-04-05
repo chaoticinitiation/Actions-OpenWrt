@@ -113,7 +113,7 @@ jobs:
 
     - name: Organize files
       id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+      if: env.UPLOAD_FIRMWARE == 'true' && !success()
       run: |
         cd openwrt/bin/targets/*/*
         rm -rf packages
@@ -129,7 +129,7 @@ jobs:
 
     - name: 生成固件Release标签
       id: tag
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      if: env.UPLOAD_RELEASE == 'true' && success()
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
         echo "- 使用源码：${{ env.REPO_URL }}" >> release.txt
@@ -140,7 +140,7 @@ jobs:
 
     - name: Upload firmware to release
       uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631
-      if: steps.tag.outputs.status == 'success' && !cancelled()
+      if: steps.tag.outputs.status == 'success' && success()
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
