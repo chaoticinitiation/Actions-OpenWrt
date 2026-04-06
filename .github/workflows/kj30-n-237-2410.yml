@@ -54,7 +54,7 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         # 2. 【新增命令】创建 8GB 的 Swap 虚拟内存，防止编译 Rust 时内存溢出 (OOM)
-        sudo fallocate -l 8G /swapfile
+        sudo dd if=/dev/zero of=/swapfile bs=1M count=8192
         sudo chmod 600 /swapfile
         sudo mkswap /swapfile
         sudo swapon /swapfile
