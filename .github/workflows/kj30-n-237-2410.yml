@@ -89,18 +89,16 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
-    - name: Fix Rust vendor issue (Cargo.toml.orig)
+    - name: Fix Rust vendor checksum issue
       run: |
         cd openwrt
-        echo "Attempting to fix Rust Cargo.toml.orig missing issue..."
+        echo "Attempting to fix Rust vendor checksum issue..."
+        # 让 rust/host 提前下载解压并打好补丁
         make package/feeds/packages/rust/host/prepare V=s || true
-        find build_dir/ -path "*/host/rustc-*/vendor/serde-*/Cargo.toml" | while read -r file; do
-          orig_file="${file}.orig"
-          if [ ! -f "$orig_file" ]; then
-            cp "$file" "$orig_file"
-            echo "Restored: $orig_file"
-          fi
-        done
+        # 查找所有的 .cargo-checksum.json，把里面对 Cargo.toml.orig 和 Cargo.toml 的哈希校验记录直接删掉
+        find build_dir/ -type f -name ".cargo-checksum.json" -exec sed -i 's/"Cargo.toml.orig":"[^"]*",\?//g' {} +
+        find build_dir/ -type f -name ".cargo-checksum.json" -exec sed -i 's/"Cargo.toml":"[^"]*",\?//g' {} +
+        echo "Checksum bypass applied successfully."
 
     - name: Compile the firmware
       id: compile
@@ -148,7 +146,7 @@ jobs:
        echo "- 使用源码：${{ env.REPO_URL }}" >> release.txt
        echo "- 使用分支：${{ env.REPO_BRANCH }}" >> release.txt
         touch release.txt
-       [ ${UPLOAD_GOFILE} = true && ${{ steps.gofile.outputs.url }} ] && echo "🔗 [GoFile](${{ steps.gofile.outputs.url }})" >> release.txt
+       [ "$UPLOAD_GOFILE" == "true" ] && [ -n "${{ steps.gofile.outputs.url }}" ] && echo "🔗 [GoFile](${{ steps.gofile.outputs.url }})" >> release.txt
        echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware to release
