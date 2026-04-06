@@ -37,11 +37,29 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@main
+     # 1. 【新增步骤】深度清理磁盘空间
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: false
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: false # 设置为 false，因为我们下一步要手动创建一个更大的 Swap
 
     - name: Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
+        # 2. 【新增命令】创建 8GB 的 Swap 虚拟内存，防止编译 Rust 时内存溢出 (OOM)
+        sudo fallocate -l 8G /swapfile
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+        sudo swapon /swapfile
+        # 验证内存和 Swap 状态
+        free -h
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
         sudo docker image prune --all --force
         sudo -E apt-get -qq update
