@@ -48,16 +48,16 @@ jobs:
         large-packages: true
         docker-images: true
         swap-storage: false # 设置为 false，因为我们下一步要手动创建一个更大的 Swap
+      # 【新增专门的 Swap 步骤】使用第三方 Action 安全创建 8GB 虚拟内存，完美绕过报错
+    - name: Setup Swap Space
+      uses: pierotofy/set-swap-space@master
+      with:
+        swap-size-gb: 8
 
     - name: Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        # 2. 【新增命令】创建 8GB 的 Swap 虚拟内存，防止编译 Rust 时内存溢出 (OOM)
-        sudo dd if=/dev/zero of=/swapfile bs=1M count=8192
-        sudo chmod 600 /swapfile
-        sudo mkswap /swapfile
-        sudo swapon /swapfile
         # 验证内存和 Swap 状态
         free -h
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
